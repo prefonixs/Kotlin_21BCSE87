@@ -8,10 +8,19 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -26,81 +35,72 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.andbatch1.ui.theme.AndBatch1Theme
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalLayoutApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val gColors = listOf(Color.Red, Color.Blue, Color.Green)
         setContent {
-            Column(modifier = Modifier.fillMaxSize().padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(50.dp)) {
-                Text(
-                    text = "Text properties: text decoration, fontFamily and letter spacing",
-                    fontFamily = FontFamily.Serif,
-                    fontSize = 20.sp,
-                    textDecoration = TextDecoration.Underline,
-                    letterSpacing = 5.sp
-                )
-                Text(
-                    text = "Text properties: fontWeight, fontSize and fontColor",
-                    color = Color.Magenta,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 25.sp
-                )
-                Text(
-                    text = "Text properties: text alignment and gradient of red, blue, green",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.background(
-                        brush = Brush.linearGradient(
-                            colors = gColors
-                        )
-                    ),
-                    color = Color.White,
-                    fontSize = 20.sp
-                )
-                Text(
-                    text = "Text properties: overflow clip, Lorem ipsum dolor sit amet, consectetur adipiscing elit",
-                    overflow = TextOverflow.Clip,
-                    softWrap = false
-                )
-                Text(
-                    text = "Text properties: overflow ellipsis, Lorem ipsum dolor sit amet, consectetur adipiscing elit",
-                    overflow = TextOverflow.Ellipsis,
-                    softWrap = false
-                )
-                Text(
-                    text = "Text properties: overflow visible, Lorem ipsum dolor sit amet, consectetur adipiscing elit",
-                    overflow = TextOverflow.Visible,
-                    softWrap = false
-                )
-                Text(
-                    text = "Text properties: line height, Lorem ipsum dolor sit amet, consectetur adipiscing elit",
-                    lineHeight = 30.sp
-                )
+            Column(modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)) {
+
+                Text(text = "Layouts", fontWeight = FontWeight.Bold, fontSize = 25.sp)
+                Column() {
+                    Text("column Item 1")
+                    Text("column Item 2")
+                    Text("column Item 3")
+                }
+                Row() {
+                    Text("row Item 1")
+                    Text("row Item 2")
+                    Text("row Item 3")
+                }
+                Box() {
+                    Text("box Item Hello")
+                    Text("box Item World")
+                    Text("box Item Sidharth")
+                }
+
+                Text(text = "Buttons", fontWeight = FontWeight.Bold, fontSize = 25.sp)
+                FlowRow( modifier = Modifier.width(1000.dp), horizontalArrangement = Arrangement.Center) {
+                    Button(onClick = { /*TODO*/ },modifier = Modifier.padding(8.dp)) {
+                        Text("Filled")
+                    }
+                    FilledTonalButton(onClick = { /*TODO*/ },modifier = Modifier.padding(8.dp)) {
+                        Text("Tonal")
+                    }
+                    OutlinedButton(onClick = { /*TODO*/ },modifier = Modifier.padding(8.dp)) {
+                        Text("Outlined")
+                    }
+                    ElevatedButton(onClick = { /*TODO*/ },modifier = Modifier.padding(8.dp)) {
+                        Text("Elevated")
+                    }
+                    TextButton(onClick = { /*TODO*/ },modifier = Modifier.padding(8.dp)){
+                        Text("Text Button")
+                    }
+                }
+
+                Text(text = "Dialog", fontWeight = FontWeight.Bold, fontSize = 25.sp)
+                var showDialog = remember { mutableStateOf(false) }
+
+                if (showDialog.value) {
+                    AlertDialog(
+                        onDismissRequest = { showDialog.value = false },
+                        title = { Text(text = "Title") },
+                        text = { Text("This is a dialog") },
+                        confirmButton = {
+                            Button(onClick = { showDialog.value = false }) {
+                                Text("OK")
+                            }
+                        }
+                    )
+                }
+
+                Button(onClick = { showDialog.value = true }) {
+                    Text("Show Dialog")
+                }
             }
-//            AndBatch1Theme {
-//                // A surface container using the 'background' color from the theme
-//                Surface(
-//                    modifier = Modifier.fillMaxSize(),
-//                    color = MaterialTheme.colorScheme.background
-//                ) {
-//                    Greeting("Sid")
-//                }
-//            }
         }
     }
 }
-
-//@Composable
-//fun Greeting(name: String, modifier: Modifier = Modifier) {
-//    Text(
-//        text = "Hello $name!",
-//        modifier = modifier
-//    )
-//}
-//
-//@Preview(showBackground = true)
-//@Composable
-//fun GreetingPreview() {
-//    AndBatch1Theme {
-//        Greeting("Android")
-//    }
-//}
