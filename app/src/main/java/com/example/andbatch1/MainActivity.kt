@@ -8,7 +8,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
@@ -29,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -54,6 +60,10 @@ import androidx.compose.ui.text.style.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.example.andbatch1.ui.theme.AndBatch1Theme
 import java.lang.Math.round
 
@@ -63,97 +73,116 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val gColors = listOf(Color.Red, Color.Blue, Color.Green)
         setContent {
-            ScaffoldExample()
+            Column (modifier = Modifier
+                .padding(10.dp)
+                .fillMaxSize()){
+                AppNavigator()
+            }
         }
     }
-    @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-    @OptIn(ExperimentalMaterial3Api::class)
+
     @Composable
-    fun ScaffoldExample(){
-        Scaffold(
-            topBar = {
-                TopAppBar(colors = TopAppBarDefaults.smallTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ), title = { Text(text = "Top bar", fontSize = 30.sp) })
-            },
-            bottomBar = {
-                BottomAppBar(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Text(text = "Bottom bar")
-                }
-            },
-            floatingActionButton = {
-                FloatingActionButton(onClick = { println("Edit is clicked") }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit button")
+    fun AppNavigator(){
+        val navController= rememberNavController()
+        NavHost(navController = navController, startDestination = "Home"){
+            composable("Home"){HomeScreen(navController)}
+            composable("List/{name}/{age}"){backStackEntry -> ListScreen(navController,
+                backStackEntry.arguments?.getString("name"),backStackEntry.arguments?.getString("age"))}
+            composable("Grid/{name}/{age}"){backStackEntry -> GridScreen(navController,
+                backStackEntry.arguments?.getString("name"),backStackEntry.arguments?.getString("age"))}
+        }
+    }
+    @Composable
+    fun HomeScreen(navController: NavController){
+        Column(horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()) {
+            Text(text="Home Screen", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(100.dp))
+
+            var name by remember { mutableStateOf("") }
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Enter your Name:") }
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+
+            var age by remember {mutableStateOf(0f)}
+            Slider(
+                value = age,
+                onValueChange = { age = it },
+                valueRange = 0f..100f,
+                modifier = Modifier.width(300.dp)
+            )
+            Text(text = "age : ${round(age)}")
+            Spacer(modifier = Modifier.height(100.dp))
+
+            Button(onClick = {navController.navigate("List/$name/${round(age)}")}) {
+                Text(text = "Go to List")
+            }
+        }
+    }
+    @Composable
+    fun ListScreen(navController: NavController,name:String?="John",age:String?="18"){
+        Column(horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()) {
+            Text(text="List Screen", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(text = "Name: $name")
+            Text(text = "Age: $age")
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            var itemsList=List(100){"items : $it"}
+            LazyColumn(modifier = Modifier.height(500.dp).width(100.dp)
+                            .padding(2.dp).border(2.dp, Color.Black)
+            ){
+                items(itemsList){
+                    item->
+                    BasicText(text = item)
                 }
             }
-        ) {
-            Column(modifier = Modifier.padding(it)) {
-                var showChip by remember {mutableStateOf(true)}
-                if (showChip) {
-                    AssistChip(
-                        modifier = Modifier.padding(10.dp),
-                        onClick = { showChip = false },
-                        label = { Text(text = "Chip") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "close"
-                            )
-                        })
-                }
-                Card (colors = CardDefaults.cardColors(containerColor = Color.Green), modifier = Modifier
-                    .size(width = 250.dp, height = 200.dp)
-                    .padding(10.dp)){
-                    Text(
-                        text = "Card Title",
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 25.sp,
-                        modifier = Modifier.padding(15.dp),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = "Name : Sidharth Mishra",
-                        fontSize = 20.sp,
-                        modifier = Modifier.padding(10.dp),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = "SIC: 21BCSE87",
-                        fontSize = 20.sp,
-                        modifier = Modifier.padding(10.dp),
-                        textAlign = TextAlign.Center
-                    )
-                }
-                var sliderVal by remember {mutableStateOf(0f)}
-                Slider(
-                    modifier = Modifier.padding(10.dp),
-                    value = sliderVal,
-                    onValueChange = { sliderVal = it },
-                    steps=9,
-                    valueRange = 0f..100f
-                )
-                Text(text = "value : ${round(sliderVal)}",modifier = Modifier.padding(10.dp))
-                Divider(thickness = 3.dp, color = Color.Gray)
-                CircularProgressIndicator(modifier = Modifier.padding(10.dp))
-                var checked by remember {
-                    mutableStateOf(true)
-                }
-                Switch(checked = checked, onCheckedChange = {checked=it},modifier = Modifier.padding(10.dp))
-                var showBottomSheet by remember {mutableStateOf(false)}
-                Button(onClick = {showBottomSheet=true}) {
-                    Text(text = "Show BottomSheet")
-                }
-                if(showBottomSheet){
-                    ModalBottomSheet(onDismissRequest = {showBottomSheet=false},modifier = Modifier.fillMaxSize()) {
-                        Text(text = "Bottom Sheet",
-                            fontSize = 20.sp,
-                            modifier = Modifier.padding(10.dp),
-                            textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Button(onClick = {navController.navigate("Grid/$name/$age")}) {
+                Text(text = "Go to Grid")
+            }
+        }
+    }
+    @Composable
+    fun GridScreen(navController: NavController,name:String?="John",age:String?="18"){
+        Column(horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()) {
+            Text(text = "Grid Screen", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(text = "Name: $name")
+            Text(text = "Age: $age")
+            Spacer(modifier = Modifier.height(20.dp))
+
+            var itemsList = List(100) { "items : $it" }
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(100.dp),
+                modifier = Modifier
+                    .height(500.dp)
+                    .padding(2.dp)
+                    .border(2.dp, Color.Black)
+            ) {
+                items(itemsList.size) { index ->
+                    Box(
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .border(1.dp, Color.Gray)
+                            .padding(8.dp)
+                    ) {
+                        BasicText(text = itemsList[index])
                     }
                 }
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Button(onClick = { navController.navigate("Home") }) {
+                Text(text = "Go to Home")
             }
         }
     }
