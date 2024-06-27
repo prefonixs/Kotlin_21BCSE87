@@ -1,10 +1,16 @@
 package com.example.kotlinfirebaseexample
 
 import android.content.ContentValues.TAG
+import android.content.Context
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +32,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -51,11 +58,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseException
 import com.google.firebase.FirebaseTooManyRequestsException
@@ -68,18 +77,26 @@ import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.firestore.firestore
 import com.google.firebase.firestore.toObject
+import com.google.firebase.storage.storage
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val userList = remember {
-                mutableStateOf<List<Firebaseuser>>(emptyList())
-            }
+            val userList = remember { mutableStateOf<List<Firebaseuser>>(emptyList()) }
             LaunchedEffect(Unit) {
                 fetchFirebaseUsers { users ->
                     userList.value = users
+                }
+            }
+            val context = LocalContext.current
+            val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+                if(it){
+                    Toast.makeText(context, "Permission Granted", Toast.LENGTH_SHORT).show()
+                }else{
+                    Toast.makeText(context, "Please Denied", Toast.LENGTH_SHORT).show()
                 }
             }
             Column {
@@ -106,12 +123,23 @@ class MainActivity : ComponentActivity() {
                 )
                 LazyColumn(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .padding(10.dp)
                 ) {
                     items(userList.value) { user ->
                         var updateAge by remember { mutableStateOf(false) }
-                        var newAge by remember { mutableStateOf(user.age.toString()) }
+                        var newAge by remember { mutableStateOf(user.age.toString())}
+                        val context = LocalContext.current
+                        val launcher =
+                            rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+                                uri?.let {
+                                    uploadImage(it, context, user.name) {
+                                        fetchFirebaseUsers { users ->
+                                            userList.value = users
+                                        }
+                                    }
+                                }
+                            }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -119,6 +147,26 @@ class MainActivity : ComponentActivity() {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
+                            Column {
+                                Text(text = "Pfp:", color = Color.LightGray)
+                                if (user.profilePictureUrl == null) {
+                                    TextButton(onClick = {
+                                        launcher.launch("image/*")
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Default.AddCircle,
+                                            contentDescription = ""
+                                        )
+                                    }
+                                } else {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(user.profilePictureUrl),
+                                        contentDescription = "Profile Picture",
+                                        modifier = Modifier.size(50.dp)
+                                    )
+                                }
+
+                            }
                             Column {
                                 Text(text = "Name:", color = Color.LightGray)
                                 Text(text = user.name)
@@ -144,11 +192,13 @@ class MainActivity : ComponentActivity() {
                                     } else {
                                         TextField(value = newAge, onValueChange = {
                                             newAge = it
-                                        }, modifier = Modifier.width(100.dp).height(50.dp),
+                                        }, modifier = Modifier
+                                            .width(100.dp)
+                                            .height(50.dp),
                                             trailingIcon = {
                                                 TextButton(
                                                     onClick = {
-                                                        updateUserInFirebaseDB(
+                                                        updateUserAgeInFirebaseDB(
                                                             user.name,
                                                             newAge.toInt()
                                                         ) {
@@ -186,6 +236,25 @@ class MainActivity : ComponentActivity() {
                         HorizontalDivider()
                     }
                 }
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = {
+                    permissionLauncher.launch(android.Manifest.permission.CAMERA)
+                }) {
+                    Text(text = "Grant camera access")
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = {
+                    permissionLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                }) {
+                    Text(text = "Grant location access")
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = {
+                    permissionLauncher.launch(android.Manifest.permission.ACCESS_MEDIA_LOCATION)
+                }) {
+                    Text(text = "Grant media access")
+                }
+//                ImageUploadScreen()
             }
         }
     }
@@ -194,6 +263,33 @@ class MainActivity : ComponentActivity() {
     val firebaseDB = Firebase.firestore
     var storedVerificationId: String? = null
     lateinit var resendToken: PhoneAuthProvider.ForceResendingToken
+    val storage = Firebase.storage
+    val storageRef = storage.reference
+    fun uploadImage(uri: Uri, context: Context, userName: String, onResult: () -> Unit) {
+        val fileName = "userPfps/${UUID.randomUUID()}.jpg"
+        val imageRef = storageRef.child(fileName)
+
+        imageRef.putFile(uri)
+            .addOnCompleteListener { takeSnapShot ->
+                imageRef.downloadUrl.addOnSuccessListener { uri ->
+                    Toast.makeText(
+                        context,
+                        "Image Uploaded Successfully: ${uri}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    updateProfilePictureUrl(userName, uri.toString()) {
+                        onResult()
+                    }
+                }
+            }
+            .addOnFailureListener { exception ->
+                Toast.makeText(
+                    context,
+                    "Image Upload failed: ${exception.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    }
 
     fun addUserToFirebaseDB(name: String, age: Int, onResult: () -> Unit) {
         val isAdult = age >= 18
@@ -232,7 +328,7 @@ class MainActivity : ComponentActivity() {
                     firebaseDB.collection("Users").document(document.id).delete()
                         .addOnSuccessListener {
                             Log.d(TAG, "DocumentSnapshot successfully deleted!")
-                            onResult()  // Fetch the updated user list after deleting a user
+                            onResult()
                         }
                         .addOnFailureListener { e ->
                             Log.w(TAG, "Error deleting document", e)
@@ -244,7 +340,7 @@ class MainActivity : ComponentActivity() {
             }
     }
 
-    fun updateUserInFirebaseDB(name: String, newAge: Int, onResult: () -> Unit) {
+    fun updateUserAgeInFirebaseDB(name: String, newAge: Int, onResult: () -> Unit) {
         firebaseDB.collection("Users")
             .whereEqualTo("name", name)
             .get()
@@ -254,7 +350,29 @@ class MainActivity : ComponentActivity() {
                     docRef.update("age", newAge, "adult", newAge >= 18)
                         .addOnSuccessListener {
                             Log.d(TAG, "DocumentSnapshot successfully updated!")
-                            onResult()  // Fetch the updated user list after updating a user
+                            onResult()
+                        }
+                        .addOnFailureListener { e ->
+                            Log.w(TAG, "Error updating document", e)
+                        }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error getting documents", e)
+            }
+    }
+
+    fun updateProfilePictureUrl(name: String, url: String, onResult: () -> Unit) {
+        firebaseDB.collection("Users")
+            .whereEqualTo("name", name)
+            .get()
+            .addOnSuccessListener { result ->
+                for (document in result) {
+                    val docRef = firebaseDB.collection("Users").document(document.id)
+                    docRef.update("profilePictureUrl", url)
+                        .addOnSuccessListener {
+                            Log.d(TAG, "DocumentSnapshot successfully updated!")
+                            onResult()
                         }
                         .addOnFailureListener { e ->
                             Log.w(TAG, "Error updating document", e)
@@ -345,6 +463,31 @@ class MainActivity : ComponentActivity() {
                 }
             }
     }
+
+//    @Composable
+//    fun ImageUploadScreen(){
+//        val context= LocalContext.current
+//        val imageUri= remember {
+//            mutableStateOf<Uri?>(null)
+//        }
+//        val launcher= rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri:Uri?->
+//            imageUri.value=uri
+//            uri?.let{
+//                uploadImage(it, context)
+//            }
+//        }
+//        Column {
+//            Button(onClick = {
+//                launcher.launch("image/*")
+//            }) {
+//                Text(text = "Select Image")
+//            }
+//            Spacer(modifier = Modifier.height(10.dp))
+//            imageUri.value.let{uri->
+//                Image(painter = rememberAsyncImagePainter(uri), contentDescription = "Upload Image", modifier = Modifier.size(250.dp))
+//            }
+//        }
+//    }
 
     @Composable
     fun AddUserScreen(userList: List<Firebaseuser>, refreshUserList: () -> Unit) {
@@ -612,5 +755,6 @@ class MainActivity : ComponentActivity() {
 data class Firebaseuser(
     val name: String = "",
     val age: Int = 0,
-    val isAdult: Boolean = false
+    val isAdult: Boolean = false,
+    val profilePictureUrl: String? = null
 )

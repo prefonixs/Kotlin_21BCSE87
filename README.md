@@ -22,3 +22,9 @@
 <div style="display: flex; flex-direction: row;">
   <img src='https://github.com/prefonixs/Kotlin_21BCSE87/assets/138750805/202e6e3f-1cfd-42c2-85fa-ab207982d54b' height=600 width=300>
 </div>
+
+# Firebase Storage and Permissions:
+
+<div style="display: flex; flex-direction: row;">
+  <img src='https://github.com/prefonixs/Kotlin_21BCSE87/assets/138750805/541baf19-209c-42b4-8c87-973ce311628d' height=600 width=300>
+</div>
