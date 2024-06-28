@@ -2,9 +2,12 @@ package com.example.kotlinfirebaseexample
 
 import android.content.ContentValues.TAG
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -30,6 +33,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
@@ -60,10 +64,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.rememberAsyncImagePainter
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseException
@@ -92,169 +100,185 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val context = LocalContext.current
-            val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-                if(it){
-                    Toast.makeText(context, "Permission Granted", Toast.LENGTH_SHORT).show()
-                }else{
-                    Toast.makeText(context, "Please Denied", Toast.LENGTH_SHORT).show()
-                }
-            }
-            Column {
-//                LogInScreen()
-//                OTPScreen()
-                Text(
-                    text = "User Screen",
-                    fontSize = 30.sp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(10.dp),
-                    textAlign = TextAlign.Center
-                )
-                AddUserScreen(userList.value) {
-                    fetchFirebaseUsers { users ->
-                        userList.value = users
+            val permissionLauncher =
+                rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+                    if (it) {
+                        Toast.makeText(context, "Permission Granted", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Please Denied", Toast.LENGTH_SHORT).show()
                     }
                 }
-                Text(
-                    text = "User List",
-                    fontSize = 20.sp,
-                    modifier = Modifier
-                        .padding(10.dp),
-                )
-                LazyColumn(
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(10.dp)
+                        .height(600.dp)
                 ) {
-                    items(userList.value) { user ->
-                        var updateAge by remember { mutableStateOf(false) }
-                        var newAge by remember { mutableStateOf(user.age.toString())}
-                        val context = LocalContext.current
-                        val launcher =
-                            rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-                                uri?.let {
-                                    uploadImage(it, context, user.name) {
-                                        fetchFirebaseUsers { users ->
-                                            userList.value = users
-                                        }
-                                    }
-                                }
-                            }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(text = "Pfp:", color = Color.LightGray)
-                                if (user.profilePictureUrl == null) {
-                                    TextButton(onClick = {
-                                        launcher.launch("image/*")
-                                    }) {
-                                        Icon(
-                                            imageVector = Icons.Default.AddCircle,
-                                            contentDescription = ""
-                                        )
-                                    }
-                                } else {
-                                    Image(
-                                        painter = rememberAsyncImagePainter(user.profilePictureUrl),
-                                        contentDescription = "Profile Picture",
-                                        modifier = Modifier.size(50.dp)
-                                    )
-                                }
+                    WebViewScreen(url = "https://silicon.ac.in")
+                }
+                LinkText("Got to full website","https://silicon.ac.in")
+                SharedPrefExample(context = context)
+            }
 
-                            }
-                            Column {
-                                Text(text = "Name:", color = Color.LightGray)
-                                Text(text = user.name)
-                            }
-                            Column {
-                                Text(text = "Age:", color = Color.LightGray)
-                                Row {
-                                    if (!updateAge) {
-                                        Text(text = user.age.toString())
-                                        TextButton(
-                                            onClick = { updateAge = true },
-                                            contentPadding = PaddingValues(0.dp),
-                                            modifier = Modifier.height(20.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Edit,
-                                                contentDescription = "",
-                                                modifier = Modifier
-                                                    .size(15.dp)
-                                                    .padding(0.dp)
-                                            )
-                                        }
-                                    } else {
-                                        TextField(value = newAge, onValueChange = {
-                                            newAge = it
-                                        }, modifier = Modifier
-                                            .width(100.dp)
-                                            .height(50.dp),
-                                            trailingIcon = {
-                                                TextButton(
-                                                    onClick = {
-                                                        updateUserAgeInFirebaseDB(
-                                                            user.name,
-                                                            newAge.toInt()
-                                                        ) {
-                                                            fetchFirebaseUsers { users ->
-                                                                userList.value = users
-                                                            }
-                                                        }
-                                                        updateAge = false
-                                                    }, contentPadding = PaddingValues(0.dp),
-                                                    modifier = Modifier.height(20.dp)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.CheckCircle,
-                                                        contentDescription = "",
-                                                        modifier = Modifier
-                                                            .size(15.dp)
-                                                            .padding(0.dp)
-                                                    )
-                                                }
-                                            })
-                                    }
-                                }
-                            }
-                            Button(onClick = {
-                                deleteUserFromFirebaseDB(user.name) {
-                                    fetchFirebaseUsers { users ->
-                                        userList.value = users
-                                    }
-                                }
-                            }) {
-                                Icon(imageVector = Icons.Default.Delete, contentDescription = "")
-                                Text(text = "Delete")
-                            }
-                        }
-                        HorizontalDivider()
-                    }
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {
-                    permissionLauncher.launch(android.Manifest.permission.CAMERA)
-                }) {
-                    Text(text = "Grant camera access")
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {
-                    permissionLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                }) {
-                    Text(text = "Grant location access")
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {
-                    permissionLauncher.launch(android.Manifest.permission.ACCESS_MEDIA_LOCATION)
-                }) {
-                    Text(text = "Grant media access")
-                }
-//                ImageUploadScreen()
+            Column {
+////                LogInScreen()
+////                OTPScreen()
+//                Text(
+//                    text = "User Screen",
+//                    fontSize = 30.sp,
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .padding(10.dp),
+//                    textAlign = TextAlign.Center
+//                )
+//                AddUserScreen(userList.value) {
+//                    fetchFirebaseUsers { users ->
+//                        userList.value = users
+//                    }
+//                }
+//                Text(
+//                    text = "User List",
+//                    fontSize = 20.sp,
+//                    modifier = Modifier
+//                        .padding(10.dp),
+//                )
+//                LazyColumn(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .padding(10.dp)
+//                ) {
+//                    items(userList.value) { user ->
+//                        var updateAge by remember { mutableStateOf(false) }
+//                        var newAge by remember { mutableStateOf(user.age.toString())}
+//                        val context = LocalContext.current
+//                        val launcher =
+//                            rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+//                                uri?.let {
+//                                    uploadImage(it, context, user.name) {
+//                                        fetchFirebaseUsers { users ->
+//                                            userList.value = users
+//                                        }
+//                                    }
+//                                }
+//                            }
+//                        Row(
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(8.dp),
+//                            verticalAlignment = Alignment.CenterVertically,
+//                            horizontalArrangement = Arrangement.SpaceBetween
+//                        ) {
+//                            Column {
+//                                Text(text = "Pfp:", color = Color.LightGray)
+//                                if (user.profilePictureUrl == null) {
+//                                    TextButton(onClick = {
+//                                        launcher.launch("image/*")
+//                                    }) {
+//                                        Icon(
+//                                            imageVector = Icons.Default.AddCircle,
+//                                            contentDescription = ""
+//                                        )
+//                                    }
+//                                } else {
+//                                    Image(
+//                                        painter = rememberAsyncImagePainter(user.profilePictureUrl),
+//                                        contentDescription = "Profile Picture",
+//                                        modifier = Modifier.size(50.dp)
+//                                    )
+//                                }
+//
+//                            }
+//                            Column {
+//                                Text(text = "Name:", color = Color.LightGray)
+//                                Text(text = user.name)
+//                            }
+//                            Column {
+//                                Text(text = "Age:", color = Color.LightGray)
+//                                Row {
+//                                    if (!updateAge) {
+//                                        Text(text = user.age.toString())
+//                                        TextButton(
+//                                            onClick = { updateAge = true },
+//                                            contentPadding = PaddingValues(0.dp),
+//                                            modifier = Modifier.height(20.dp)
+//                                        ) {
+//                                            Icon(
+//                                                imageVector = Icons.Default.Edit,
+//                                                contentDescription = "",
+//                                                modifier = Modifier
+//                                                    .size(15.dp)
+//                                                    .padding(0.dp)
+//                                            )
+//                                        }
+//                                    } else {
+//                                        TextField(value = newAge, onValueChange = {
+//                                            newAge = it
+//                                        }, modifier = Modifier
+//                                            .width(100.dp)
+//                                            .height(50.dp),
+//                                            trailingIcon = {
+//                                                TextButton(
+//                                                    onClick = {
+//                                                        updateUserAgeInFirebaseDB(
+//                                                            user.name,
+//                                                            newAge.toInt()
+//                                                        ) {
+//                                                            fetchFirebaseUsers { users ->
+//                                                                userList.value = users
+//                                                            }
+//                                                        }
+//                                                        updateAge = false
+//                                                    }, contentPadding = PaddingValues(0.dp),
+//                                                    modifier = Modifier.height(20.dp)
+//                                                ) {
+//                                                    Icon(
+//                                                        imageVector = Icons.Default.CheckCircle,
+//                                                        contentDescription = "",
+//                                                        modifier = Modifier
+//                                                            .size(15.dp)
+//                                                            .padding(0.dp)
+//                                                    )
+//                                                }
+//                                            })
+//                                    }
+//                                }
+//                            }
+//                            Button(onClick = {
+//                                deleteUserFromFirebaseDB(user.name) {
+//                                    fetchFirebaseUsers { users ->
+//                                        userList.value = users
+//                                    }
+//                                }
+//                            }) {
+//                                Icon(imageVector = Icons.Default.Delete, contentDescription = "")
+//                                Text(text = "Delete")
+//                            }
+//                        }
+//                        HorizontalDivider()
+//                    }
+//                }
+//                Spacer(modifier = Modifier.height(20.dp))
+//                Button(onClick = {
+//                    permissionLauncher.launch(android.Manifest.permission.CAMERA)
+//                }) {
+//                    Text(text = "Grant camera access")
+//                }
+//                Spacer(modifier = Modifier.height(20.dp))
+//                Button(onClick = {
+//                    permissionLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+//                }) {
+//                    Text(text = "Grant location access")
+//                }
+//                Spacer(modifier = Modifier.height(20.dp))
+//                Button(onClick = {
+//                    permissionLauncher.launch(android.Manifest.permission.ACCESS_MEDIA_LOCATION)
+//                }) {
+//                    Text(text = "Grant media access")
+//                }
+////                ImageUploadScreen()
             }
         }
     }
@@ -488,6 +512,86 @@ class MainActivity : ComponentActivity() {
 //            }
 //        }
 //    }
+
+
+    @Composable
+    fun WebViewScreen(url: String) {
+        val context = LocalContext.current
+        AndroidView(
+            factory = {
+                WebView(context).apply {
+                    webViewClient = WebViewClient()
+//                    settings.javaScriptEnabled = true
+                    loadUrl(url)
+                }
+            },
+            update = { webView ->
+                webView.loadUrl(url)
+
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+
+    @Composable
+    fun SharedPrefExample(context: Context) {
+        val sharedPref = context.getSharedPreferences("my_prefs", Context.MODE_PRIVATE)
+        val editor = sharedPref.edit()
+
+        var text by remember {
+            mutableStateOf(sharedPref.getString("saved_text", "") ?: "")
+        }
+        Column(
+            modifier = Modifier
+                .padding(20.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            TextField(value = text, onValueChange = {
+                text = it
+            }, label = { Text(text = "Enter some text") })
+            Button(onClick = {
+                editor.putString("saved_text", text)
+                editor.apply()
+            }) {
+                Text(text = "Save to Shared Pref")
+            }
+            Text(text = "Saved Text: ${sharedPref.getString("saved_text", "")}")
+        }
+    }
+
+    @Composable
+    fun LinkText(text: String, url: String) {
+        val context = LocalContext.current
+        val annotatedString = buildAnnotatedString {
+            append(text)
+            addStyle(
+                style =  SpanStyle(
+                    color = Color.Blue,
+                    textDecoration = TextDecoration.Underline
+                ),
+                start = 0,
+                end = text.length
+            )
+            addStringAnnotation(
+                tag = "URL",
+                annotation = url,
+                start = 0,
+                end = url.length
+            )
+        }
+
+        ClickableText(text = annotatedString,
+            onClick = { offset ->
+                annotatedString.getStringAnnotations("URL", offset, offset)
+                    .firstOrNull()?.let {stringAnnotation->
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(stringAnnotation.item))
+                        context.startActivity(intent)
+                    }
+            }
+        )
+    }
 
     @Composable
     fun AddUserScreen(userList: List<Firebaseuser>, refreshUserList: () -> Unit) {

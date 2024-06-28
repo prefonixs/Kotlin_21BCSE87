@@ -28,3 +28,9 @@
 <div style="display: flex; flex-direction: row;">
   <img src='https://github.com/prefonixs/Kotlin_21BCSE87/assets/138750805/541baf19-209c-42b4-8c87-973ce311628d' height=600 width=300>
 </div>
+
+# Webview, Shared Preference and URL Redirections :
+
+<div style="display: flex; flex-direction: row;">
+  <img src='https://github.com/prefonixs/Kotlin_21BCSE87/assets/138750805/d3d89e5e-129e-4c62-b1c8-340e3177e92e' height=600 width=300>
+</div>
